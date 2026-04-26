@@ -88,6 +88,9 @@ jobs:
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+  
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
 
       - name: Deploy Function App
         uses: azure/functions-action@v1
