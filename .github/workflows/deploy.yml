@@ -89,6 +89,12 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      # Install dependencies LOCALLY on the runner
+      - name: Install Dependencies
+        run: |
+          cd function-app
+          pip install -r requirements.txt -t .
+
       - name: Deploy Function App
         uses: azure/functions-action@v1
         with:
