@@ -2,7 +2,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
     getVisitCount();
 });
 
-// ⚠️ CONFIGURATION:
+// CONFIGURATION:
 // 1. For LOCAL TESTING: Uncomment the localApiUrl line below and comment out productionApiUrl.
 // 2. For PRODUCTION: Uncomment the productionApiUrl line and fill in your Azure Function URL.
 
