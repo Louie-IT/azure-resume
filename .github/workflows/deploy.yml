@@ -1,0 +1,84 @@
+name: Deploy Cloud Resume Challenge
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  # These map to the GitHub Secrets you will create
+  RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
+  LOCATION: ${{ secrets.LOCATION }}
+  STORAGE_ACCOUNT_NAME: ${{ secrets.STORAGE_ACCOUNT_NAME }}
+  FUNCTION_APP_NAME: ${{ secrets.FUNCTION_APP_NAME }}
+  DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+  CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
+
+jobs:
+  # Job 1: Provision Infrastructure with Terraform
+  terraform:
+    name: Provision Azure Resources
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        working-directory: ./infra
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ./infra
+        run: terraform plan -out=tfplan -var="resource_group_name=${{ env.RESOURCE_GROUP }}" -var="location=${{ env.LOCATION }}" -var="storage_account_name=${{ env.STORAGE_ACCOUNT_NAME }}" -var="function_app_name=${{ env.FUNCTION_APP_NAME }}" -var="cosmos_db_endpoint=${{ secrets.COSMOS_ENDPOINT }}" -var="cosmos_db_key=${{ secrets.COSMOS_KEY }}" -var="database_name=${{ env.DATABASE_NAME }}" -var="container_name=${{ env.CONTAINER_NAME }}"
+
+      - name: Terraform Apply
+        working-directory: ./infra
+        run: terraform apply -auto-approve tfplan
+
+  # Job 2: Deploy Frontend to Storage
+  deploy-frontend:
+    name: Deploy Static Site
+    needs: terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Upload to Storage
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az storage blob sync \
+              --container '$web' \
+              --account-name ${{ env.STORAGE_ACCOUNT_NAME }} \
+              --source './frontend/' \
+              --delete-destination true
+
+  # Job 3: Deploy Function App
+  deploy-function:
+    name: Deploy Function
+    needs: terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Function App
+        uses: azure/functions-action@v1
+        with:
+          app-name: ${{ env.FUNCTION_APP_NAME }}
+          package: './function-app'
+          # Ensure the venv is handled or dependencies are installed during build
+          # For V1 model, we just zip the folder
