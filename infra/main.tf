@@ -97,34 +97,11 @@ resource "azurerm_linux_function_app" "func" {
   }
 }
 
-# 6. CDN Profile
-resource "azurerm_cdn_profile" "profile" {
-  name                = "${var.storage_account_name}-cdn"
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
-  sku                 = "Standard_Microsoft"
-}
-
-# 7. CDN Endpoint
-resource "azurerm_cdn_endpoint" "endpoint" {
-  name                = "${var.storage_account_name}-cdn-endpoint"
-  resource_group_name = azurerm_resource_group.rg.name
-  profile_name        = azurerm_cdn_profile.profile.name
-  location            = azurerm_resource_group.rg.location
-  
-  origin_host_header = azurerm_storage_account.storage.primary_web_endpoint
-
-  origin {
-    name      = "storage-origin"
-    host_name = azurerm_storage_account.storage.primary_web_endpoint
-  }
-}
-
-# Outputs
+# Update Output to use Storage Endpoint directly
 output "cdn_endpoint_url" {
-  # Construct the URL manually if the attribute is tricky
-  value = "https://${azurerm_cdn_endpoint.endpoint.name}.${azurerm_cdn_profile.profile.name}.azureedge.net"
-  description = "The URL of your live resume site"
+  # Use the static website endpoint of the storage account directly
+  value = "https://${azurerm_storage_account.storage.primary_web_endpoint}"
+  description = "The URL of your live resume site (via Storage Static Website)"
 }
 
 output "function_app_url" {
