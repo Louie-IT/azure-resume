@@ -97,6 +97,8 @@ resource "azurerm_linux_function_app" "func" {
     "FUNCTIONS_WORKER_RUNTIME" = "python"
     "WEBSITE_CONTENTAZUREFILE" = azurerm_storage_account.func_storage.name
     "WEBSITE_CONTENTSHARE"     = lower(var.function_app_name)
+    "WEBSITE_RUN_FROM_PACKAGE"    = "0"
+    "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
   }
 
   tags = {
