@@ -22,7 +22,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Log in to Azure using the Service Principal
       - name: Login to Azure
         uses: azure/login@v1
         with:
@@ -37,15 +36,16 @@ jobs:
 
       - name: Terraform Plan
         working-directory: ./infra
-        run: terraform plan -out=tfplan \
-          -var="resource_group_name=${{ secrets.RESOURCE_GROUP }}" \
-          -var="location=${{ secrets.LOCATION }}" \
-          -var="storage_account_name=${{ secrets.STORAGE_ACCOUNT_NAME }}" \
-          -var="function_app_name=${{ secrets.FUNCTION_APP_NAME }}" \
-          -var="cosmos_db_endpoint=${{ secrets.COSMOS_ENDPOINT }}" \
-          -var="cosmos_db_key=${{ secrets.COSMOS_KEY }}" \
-          -var="database_name=${{ secrets.DATABASE_NAME }}" \
-          -var="container_name=${{ secrets.CONTAINER_NAME }}"
+        run: |
+          terraform plan -out=tfplan \
+            -var="resource_group_name=${{ secrets.RESOURCE_GROUP }}" \
+            -var="location=${{ secrets.LOCATION }}" \
+            -var="storage_account_name=${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            -var="function_app_name=${{ secrets.FUNCTION_APP_NAME }}" \
+            -var="cosmos_db_endpoint=${{ secrets.COSMOS_ENDPOINT }}" \
+            -var="cosmos_db_key=${{ secrets.COSMOS_KEY }}" \
+            -var="database_name=${{ secrets.DATABASE_NAME }}" \
+            -var="container_name=${{ secrets.CONTAINER_NAME }}"
 
       - name: Terraform Apply
         working-directory: ./infra
