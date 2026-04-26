@@ -1,0 +1,137 @@
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 3.0"
+    }
+  }
+}
+
+provider "azurerm" {
+  features {}
+}
+
+# Input Variables (Values come from terraform.tfvars or GitHub Secrets)
+variable "resource_group_name" { type = string }
+variable "location"            { type = string }
+variable "storage_account_name" { type = string }
+variable "function_app_name"   { type = string }
+variable "cosmos_db_endpoint"  { type = string }
+variable "cosmos_db_key"       { type = string }
+variable "database_name"       { type = string }
+variable "container_name"      { type = string }
+
+# 1. Resource Group
+resource "azurerm_resource_group" "rg" {
+  name     = var.resource_group_name
+  location = var.location
+}
+
+# 2. Storage Account (for Static Website)
+resource "azurerm_storage_account" "storage" {
+  name                     = var.storage_account_name
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = azurerm_resource_group.rg.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+
+  static_website {
+    index_document     = "index.html"
+    error_404_document = "404.html"
+  }
+
+  tags = {
+    environment = "cloud-resume-challenge"
+  }
+}
+
+# 3. Storage Account for Function App (Required by Azure Functions)
+resource "azurerm_storage_account" "func_storage" {
+  name                     = "${var.function_app_name}stor"
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = azurerm_resource_group.rg.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
+# 4. App Service Plan (Consumption Plan for Serverless)
+resource "azurerm_service_plan" "plan" {
+  name                = "${var.function_app_name}-plan"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  os_type             = "Linux"
+  sku_name            = "Y1" # Y1 = Consumption Plan
+}
+
+# 5. Function App
+resource "azurerm_function_app" "func" {
+  name                       = var.function_app_name
+  resource_group_name        = azurerm_resource_group.rg.name
+  location                   = azurerm_resource_group.rg.location
+  storage_account_name       = azurerm_storage_account.func_storage.name
+  storage_account_access_key = azurerm_storage_account.func_storage.primary_access_key
+  service_plan_id            = azurerm_service_plan.plan.id
+
+  site_config {
+    application_stack {
+      python_version = "3.12"
+    }
+    
+    # CORS settings to allow your frontend to call the API
+    cors {
+      allowed_origins = ["*"] # In production, replace with your CDN domain
+    }
+  }
+
+  # Inject Environment Variables for the Function
+  app_settings = {
+    "COSMOS_ENDPOINT"      = var.cosmos_db_endpoint
+    "COSMOS_KEY"           = var.cosmos_db_key
+    "DATABASE_NAME"        = var.database_name
+    "APP_CONTAINER_NAME"   = var.container_name
+    "FUNCTIONS_WORKER_RUNTIME" = "python"
+    "WEBSITE_CONTENTAZUREFILE" = azurerm_storage_account.func_storage.name
+    "WEBSITE_CONTENTSHARE"     = lower(var.function_app_name)
+  }
+
+  tags = {
+    environment = "cloud-resume-challenge"
+  }
+}
+
+# 6. CDN Profile
+resource "azurerm_cdn_profile" "profile" {
+  name                = "${var.storage_account_name}-cdn"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  sku                 = "Standard_Microsoft"
+}
+
+# 7. CDN Endpoint (Points to the Storage Account)
+resource "azurerm_cdn_endpoint" "endpoint" {
+  name                = "${var.storage_account_name}-cdn-endpoint"
+  resource_group_name = azurerm_resource_group.rg.name
+  profile_name        = azurerm_cdn_profile.profile.name
+  location            = azurerm_resource_group.rg.location
+  
+  # The origin is the static website endpoint of the storage account
+  origin_host_header = azurerm_storage_account.storage.primary_web_endpoint
+
+  origin {
+    name      = "storage-origin"
+    host_name = azurerm_storage_account.storage.primary_web_endpoint
+  }
+
+  # Optional: Custom domain configuration can be added here later
+}
+
+# Output the CDN URL for easy access
+output "cdn_endpoint_url" {
+  value = azurerm_cdn_endpoint.endpoint.endpoint_host_name
+  description = "The URL of your live resume site"
+}
+
+output "function_app_url" {
+  value = "https://${azurerm_function_app.func.default_hostname}/api/main"
+  description = "The URL of your Azure Function"
+}
