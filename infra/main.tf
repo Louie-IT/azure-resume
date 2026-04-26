@@ -5,6 +5,13 @@ terraform {
       version = "~> 3.0"
     }
   }
+  
+  backend "azurerm" {
+    resource_group_name  = "rg-ls-lab-azure-cv01" 
+    storage_account_name = "saazurecv01"
+    container_name       = "tfstate"
+    key                  = "cloud-resume.tfstate"
+  }
 }
 
 provider "azurerm" {
@@ -100,7 +107,7 @@ resource "azurerm_linux_function_app" "func" {
 # Update Output to use Storage Endpoint directly
 output "cdn_endpoint_url" {
   # Use the static website endpoint of the storage account directly
-  value = "https://${azurerm_storage_account.storage.primary_web_endpoint}"
+  value = azurerm_storage_account.storage.primary_web_endpoint
   description = "The URL of your live resume site (via Storage Static Website)"
 }
 

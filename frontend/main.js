@@ -9,7 +9,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
 // --- LOCAL TESTING (Uncomment this line for local dev) ---
 // const apiUrl = 'http://localhost:7071/api/get_visitor_count';
 
-// --- PRODUCTION (Uncomment this line and fill URL for deploy) ---
+// --- PRODUCTION (Uncomment this line and fill URL for deployment) ---
 const apiUrl = 'https://funccountcv01.azurewebsites.net/api/main';
 
 const getVisitCount = async () => {

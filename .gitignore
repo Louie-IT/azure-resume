@@ -1,0 +1,14 @@
+# Ignore local settings
+function-app/local.settings.json
+
+# Ignore Terraform state (critical for security)
+infra/.terraform/
+infra/terraform.tfstate
+infra/terraform.tfstate.backup
+
+# Terraform Plan Files
+infra/tfplan
+
+# Ignore Python cache
+__pycache__/
+*.pyc
