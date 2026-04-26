@@ -122,7 +122,8 @@ resource "azurerm_cdn_endpoint" "endpoint" {
 
 # Outputs
 output "cdn_endpoint_url" {
-  value = azurerm_cdn_endpoint.endpoint.host_name
+  # Construct the URL manually if the attribute is tricky
+  value = "https://${azurerm_cdn_endpoint.endpoint.name}.${azurerm_cdn_profile.profile.name}.azureedge.net"
   description = "The URL of your live resume site"
 }
 
