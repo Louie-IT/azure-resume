@@ -8,9 +8,10 @@ on:
       - 'frontend/**'
       - 'function-app/**'
       - '.github/**'
-      # Removed '*.md' - README changes won't trigger any workflow
+      # Note: Removed '*.md' so README changes don't trigger the workflow at all
 
 env:
+  # These map to the GitHub Secrets you will create
   RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
   LOCATION: ${{ secrets.LOCATION }}
   STORAGE_ACCOUNT_NAME: ${{ secrets.STORAGE_ACCOUNT_NAME }}
@@ -19,50 +20,76 @@ env:
   CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
 
 jobs:
+  # Job 1: Provision Infrastructure with Terraform
   terraform:
     name: Provision Azure Resources
     runs-on: ubuntu-latest
-    # Simple check: Only run if commit message contains '[tf]'
-    # Since workflow only starts for infra/frontend/function-app changes,
-    # we can infer infra changes from the workflow trigger
-    if: contains(github.event.head_commit.message, '[tf]') || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      # Step 1: Check if 'infra' folder changed in this commit
+      - name: Check if Infra Changed
+        id: check_infra
+        run: |
+          # Get the list of changed files compared to the previous commit
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+          echo "Changed files: $CHANGED_FILES"
+          
+          # Check if any file starts with 'infra/'
+          if echo "$CHANGED_FILES" | grep -q "^infra/"; then
+            echo "infra_changed=true" >> $GITHUB_OUTPUT
+            echo "::notice::Infra files changed. Proceeding with Terraform."
+          else
+            echo "infra_changed=false" >> $GITHUB_OUTPUT
+            echo "::notice::No infra files changed. Skipping Terraform steps."
+          fi
+
+      # Step 2: Login to Azure (Only if infra changed)
       - name: Login to Azure
+        if: steps.check_infra.outputs.infra_changed == 'true'
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      # Step 3: Setup Terraform (Only if infra changed)
       - name: Setup Terraform
+        if: steps.check_infra.outputs.infra_changed == 'true'
         uses: hashicorp/setup-terraform@v2
 
+      # Step 4: Terraform Init (Only if infra changed)
       - name: Terraform Init
+        if: steps.check_infra.outputs.infra_changed == 'true'
         working-directory: ./infra
         run: terraform init
 
+      # Step 5: Terraform Plan (Only if infra changed)
       - name: Terraform Plan
+        if: steps.check_infra.outputs.infra_changed == 'true'
         working-directory: ./infra
         run: |
           terraform plan -out=tfplan \
-            -var="resource_group_name=${{ secrets.RESOURCE_GROUP }}" \
-            -var="location=${{ secrets.LOCATION }}" \
-            -var="storage_account_name=${{ secrets.STORAGE_ACCOUNT_NAME }}" \
-            -var="function_app_name=${{ secrets.FUNCTION_APP_NAME }}" \
+            -var="resource_group_name=${{ env.RESOURCE_GROUP }}" \
+            -var="location=${{ env.LOCATION }}" \
+            -var="storage_account_name=${{ env.STORAGE_ACCOUNT_NAME }}" \
+            -var="function_app_name=${{ env.FUNCTION_APP_NAME }}" \
             -var="cosmos_db_endpoint=${{ secrets.COSMOS_ENDPOINT }}" \
             -var="cosmos_db_key=${{ secrets.COSMOS_KEY }}" \
-            -var="database_name=${{ secrets.DATABASE_NAME }}" \
-            -var="container_name=${{ secrets.CONTAINER_NAME }}"
+            -var="database_name=${{ env.DATABASE_NAME }}" \
+            -var="container_name=${{ env.CONTAINER_NAME }}"
 
+      # Step 6: Terraform Apply (Only if infra changed)
       - name: Terraform Apply
+        if: steps.check_infra.outputs.infra_changed == 'true'
         working-directory: ./infra
         run: terraform apply -auto-approve tfplan
 
+  # Job 2: Deploy Frontend to Storage
   deploy-frontend:
     name: Deploy Static Site
     needs: terraform
     runs-on: ubuntu-latest
+    # Run if Terraform succeeded OR was skipped (e.g., only frontend changed)
     if: always() && (needs.terraform.result == 'success' || needs.terraform.result == 'skipped')
     steps:
       - name: Checkout Code
@@ -83,10 +110,12 @@ jobs:
               --source './frontend/' \
               --delete-destination true
 
+  # Job 3: Deploy Function App
   deploy-function:
     name: Deploy Function
     needs: terraform
     runs-on: ubuntu-latest
+    # Run if Terraform succeeded OR was skipped
     if: always() && (needs.terraform.result == 'success' || needs.terraform.result == 'skipped')
     steps:
       - name: Checkout Code
