@@ -3,9 +3,14 @@ name: Deploy Cloud Resume Challenge
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'infra/**'
+      - 'frontend/**'
+      - 'function-app/**'
+      - '.github/**'
+      # Removed '*.md' - README changes won't trigger any workflow
 
 env:
-  # These map to the GitHub Secrets you will create
   RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
   LOCATION: ${{ secrets.LOCATION }}
   STORAGE_ACCOUNT_NAME: ${{ secrets.STORAGE_ACCOUNT_NAME }}
@@ -14,10 +19,13 @@ env:
   CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
 
 jobs:
-  # Job 1: Provision Infrastructure with Terraform
   terraform:
     name: Provision Azure Resources
     runs-on: ubuntu-latest
+    # Simple check: Only run if commit message contains '[tf]'
+    # Since workflow only starts for infra/frontend/function-app changes,
+    # we can infer infra changes from the workflow trigger
+    if: contains(github.event.head_commit.message, '[tf]') || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -51,11 +59,11 @@ jobs:
         working-directory: ./infra
         run: terraform apply -auto-approve tfplan
 
-  # Job 2: Deploy Frontend to Storage
   deploy-frontend:
     name: Deploy Static Site
     needs: terraform
     runs-on: ubuntu-latest
+    if: always() && (needs.terraform.result == 'success' || needs.terraform.result == 'skipped')
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -75,29 +83,32 @@ jobs:
               --source './frontend/' \
               --delete-destination true
 
-  # Job 3: Deploy Function App
   deploy-function:
     name: Deploy Function
     needs: terraform
     runs-on: ubuntu-latest
+    if: always() && (needs.terraform.result == 'success' || needs.terraform.result == 'skipped')
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Login to Azure
-        uses: azure/login@v1
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          python-version: '3.9'
 
-      # Install dependencies LOCALLY on the runner
       - name: Install Dependencies
         run: |
           cd function-app
           pip install -r requirements.txt -t .
 
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+  
       - name: Deploy Function App
         uses: azure/functions-action@v1
         with:
           app-name: ${{ env.FUNCTION_APP_NAME }}
           package: './function-app'
-          # IMPORTANT: Ensure SCM_DO_BUILD_DURING_DEPLOYMENT is true in Azure
