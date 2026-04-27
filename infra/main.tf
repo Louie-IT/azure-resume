@@ -108,7 +108,7 @@ resource "azurerm_linux_function_app" "func" {
 
 # Update Output to use Storage Endpoint directly
 output "cdn_endpoint_url" {
-  # Use the static website endpoint of the storage account directly
+  # Use the static website endpoint of the Storage Account directly
   value = azurerm_storage_account.storage.primary_web_endpoint
   description = "The URL of your live resume site (via Storage Static Website)"
 }
