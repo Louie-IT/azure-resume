@@ -26,7 +26,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             response = container.read_item(item='1', partition_key='1')
             current_count = response.get('count', 0)
         except exceptions.CosmosResourceNotFoundError:
-            # Item doesn't exist, create it with count 0
+            # Item does not exist, create it with count 0
             logging.info("Counter item not found. Creating new one.")
             response = container.create_item(body={"id": "1", "count": 0})
             current_count = 0
