@@ -131,4 +131,4 @@ This is a learning project. Feel free to fork and explore the codebase.</br>
 
 ## 📄 License
 
-Project licensed under the MIT License.
+This project is licensed under the MIT License.
