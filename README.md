@@ -3,10 +3,6 @@
 ![Static Badge](https://img.shields.io/badge/Azure-000000?style=flat-square&logo=icloud&logoColor=ffffff&color=2e5ff2)
  ![Static Badge](https://img.shields.io/badge/GitHub-000000?style=flat-square&logo=github&color=2e5ff2) ![Static Badge](https://img.shields.io/badge/Terraform-000000?style=flat-square&logo=terraform&logoColor=ffffff&color=2e5ff2) ![Static Badge](https://img.shields.io/badge/Python-000000?style=flat-square&logo=python&logoColor=ffffff&color=2e5ff2) ![Static Badge](https://img.shields.io/badge/Cloudflare-000000?style=flat-square&logo=cloudflare&logoColor=ffffff&color=2e5ff2)
 
-
-
-
-
 A serverless, secure, and scalable personal resume website built on **Microsoft Azure**. This project demonstrates end-to-end cloud engineering skills, from Infrastructure as Code (IaC) to CI/CD automation and serverless backend integration.
 
 ## 🚀 Live Demo
@@ -55,6 +51,7 @@ The solution follows a **Serverless** architecture:
 ├── function-app/               # Azure Function Code
 │   ├── __init__.py             # API Endpoint Logic
 │   ├── requirements.txt        # Python Dependencies
+|   ├── test_function.py        # Tests the visitor counter Azure Function logic       
 │   └── function.json           # Function Configuration
 └── README.md
 ```
@@ -80,7 +77,7 @@ The solution follows a **Serverless** architecture:
 
 4. Cost-Effective Custom Domain & SSL
 
-    Replaced expensive Azure Front Door with Cloudflare Free Tier.
+    Replaced potential costly Azure Front Door service with Cloudflare Free Tier.
     Configured DNS CNAME records and Full SSL mode to serve the site over HTTPS with a custom domain at zero additional cost.
 
 ## 🏃 Getting Started
@@ -126,12 +123,12 @@ Push to the main branch to trigger the GitHub Actions pipeline:
 
   * Uptime: 99.9% (Azure SLA)
   * Latency: < 100ms (Global via Cloudflare Edge)
-  * Cost: ~0−5/month (Free tiers utilized)</br>
+  * Cost: ~0−5/month (Free tiers utilized); ~$40/year (Domain registration/renewal)</br>
 
 ## 🤝 Contributing
 
-This is a learning project. Feel free to fork and explore the codebase!</br>
+This is a learning project. Feel free to fork and explore the codebase.</br>
 
 ## 📄 License
 
-MIT License
+Project licensed under the MIT License.
